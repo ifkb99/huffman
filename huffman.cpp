@@ -1,7 +1,7 @@
 #include <fstream>
 #include <iostream>
+#include <unordered_map>
 #include <vector>
-#include <utility>
 
 /*
 	This program takes in a filename, and encodes it Huffman style
@@ -17,16 +17,31 @@
 	Try buffered reading to use less memory? (read in ez cachable blocks)
 */
 
-// std::vector<std::string> read_file(std::string filename) {
-
-// }
-
 //returns chars and percentage of appearance as double
-std::vector< std::pair<char, double> > scan(std::string filename) {
-	//open file and start reading
-	std::vector< std::pair<char, double> > percentages;
+std::unordered_map<char, double>* get_percentages(std::ifstream filestream) {
+	//init occurences map
+	auto occurences = new std::unordered_map<char, double>();
+	long total_chars = 0;
+	
+	//read through file and gather data for percentages
+	std::unordered_map<char, double>::iterator it;
+	while (!filestream.eof()) {
+		char cur = filestream.get();
+		it = occurences->find(cur);
+		if (it == occurences->end()) {
+			occurences->emplace(cur, 1.0);
+		} else {
+			it->second += 1.0;
+		}
+		total_chars++;
+	}
 
-	return percentages;
+	//modify occurences to hold averages and return
+	for (it = occurences->begin(); it != occurences->end(); it++) {
+		it->second /= total_chars;
+	}
+
+	return occurences;
 }
 
 /*
@@ -42,10 +57,14 @@ std::vector< std::pair<char, double> > scan(std::string filename) {
 
 std::vector<std::string> encode(std::ifstream& filestream) {
 	//scan file to get char values
+	//currently the file is read through once to get percentages,
+	// then again to compress. Is it possible to do it all at once? I doubt it.
+	//
+	//too tired to fix, look at link tomorrow
+	//https://stackoverflow.com/questions/12432952/why-is-my-fstream-being-implicitly-deleted
+	auto occurences = get_percentages(filestream);
 
 	//make huffman tree
-
-	//make file called filename + .huff
 
 	//write huffman tree values to file, and EOT char (double newline?)
 
@@ -58,6 +77,14 @@ std::vector<std::string> encode(std::ifstream& filestream) {
 		encoded.push_back(line);
 	}
 	filestream.close();
+
+	//printing percentages map too
+	for (auto it = occurences->begin(); it != occurences->end(); it++) {
+		std::cout << char_val.first << " : " << char_val.second << "%\n";
+	}
+	std::cout << std::endl;
+	delete occurences; //put this in the right place if you move occurences
+
 	return encoded;
 }
 
@@ -69,6 +96,8 @@ std::vector<std::string> decode(std::ifstream& filestream) {
 	//make new file called filename.substr(filename.size()-5)
 
 	//decode compressed file and write to new file
+
+	//----------------test output atm
 	std::vector<std::string> decoded;
 	std::string line;
 	while (getline(filestream, line)) {
@@ -97,10 +126,10 @@ int main(int argc, const char* argv[]) {
 	std::ofstream output;
 	std::vector<std::string> file_data;
 	if (extension == ".huff") { //is already encoded
-		file_data = decode(input);
+		file_data = decode(&input);
 		output.open(filename.substr(0, filename.size()-5)); //removes .huff
 	} else { //isn't encoded
-		file_data = encode(input);
+		file_data = encode(&input);
 		output.open(filename + ".huff");
 	}
 
@@ -109,7 +138,7 @@ int main(int argc, const char* argv[]) {
 
 	//write data to file
 	for (const std::string& line : file_data) {
-		output << line;
+		output << line << '\n'; //newline is stripped rn
 	}
 	output.close();
 

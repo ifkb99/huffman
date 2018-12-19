@@ -10,7 +10,7 @@
 	The program automatically detects if the filename is already encoded
 
 	TODO: make man page
-	Don't forget to use optimizer when done
+	Get this working then improve file read/write practices
 
 	Try encoding in hex or oct and use B/B+ trees?
 
@@ -18,8 +18,8 @@
 */
 
 //returns chars and percentage of appearance as double
-std::unordered_map<char, double>* get_percentages(std::ifstream filestream) {
-	//init occurences map
+std::unordered_map<char, double>* get_percentages(std::ifstream& filestream) {
+	//init occurences map ptr
 	auto occurences = new std::unordered_map<char, double>();
 	long total_chars = 0;
 	
@@ -41,6 +41,8 @@ std::unordered_map<char, double>* get_percentages(std::ifstream filestream) {
 		it->second /= total_chars;
 	}
 
+	//reset filestream
+	filestream.seekg(0, filestream.beg);
 	return occurences;
 }
 
@@ -59,6 +61,7 @@ std::vector<std::string> encode(std::ifstream& filestream) {
 	//scan file to get char values
 	//currently the file is read through once to get percentages,
 	// then again to compress. Is it possible to do it all at once? I doubt it.
+	//map ptr
 	//
 	//too tired to fix, look at link tomorrow
 	//https://stackoverflow.com/questions/12432952/why-is-my-fstream-being-implicitly-deleted
@@ -80,7 +83,7 @@ std::vector<std::string> encode(std::ifstream& filestream) {
 
 	//printing percentages map too
 	for (auto it = occurences->begin(); it != occurences->end(); it++) {
-		std::cout << char_val.first << " : " << char_val.second << "%\n";
+		std::cout << it->first << " : " << it->second << "%\n";
 	}
 	std::cout << std::endl;
 	delete occurences; //put this in the right place if you move occurences
@@ -126,10 +129,10 @@ int main(int argc, const char* argv[]) {
 	std::ofstream output;
 	std::vector<std::string> file_data;
 	if (extension == ".huff") { //is already encoded
-		file_data = decode(&input);
+		file_data = decode(input);
 		output.open(filename.substr(0, filename.size()-5)); //removes .huff
 	} else { //isn't encoded
-		file_data = encode(&input);
+		file_data = encode(input);
 		output.open(filename + ".huff");
 	}
 

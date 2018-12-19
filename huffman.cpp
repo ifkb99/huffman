@@ -37,12 +37,11 @@ std::unordered_map<char, double>* get_percentages(std::ifstream& filestream) {
 	}
 
 	//modify occurences to hold averages and return
+	total_chars--; //there is a char at the beginning of every file we skip
 	for (it = occurences->begin(); it != occurences->end(); it++) {
 		it->second /= total_chars;
 	}
 
-	//reset filestream
-	filestream.seekg(0, filestream.beg);
 	return occurences;
 }
 
@@ -62,9 +61,6 @@ std::vector<std::string> encode(std::ifstream& filestream) {
 	//currently the file is read through once to get percentages,
 	// then again to compress. Is it possible to do it all at once? I doubt it.
 	//map ptr
-	//
-	//too tired to fix, look at link tomorrow
-	//https://stackoverflow.com/questions/12432952/why-is-my-fstream-being-implicitly-deleted
 	auto occurences = get_percentages(filestream);
 
 	//make huffman tree
@@ -74,16 +70,29 @@ std::vector<std::string> encode(std::ifstream& filestream) {
 	//write rest of file
 
 	//--------------right now this just returns a vector<string> of read file
+	
+	//reset filestream to beginning
+	filestream.seekg(0, filestream.beg); //not working??
+	//http://www.cplusplus.com/reference/istream/istream/seekg/
+	//TODO: read link. get fstream reset working
+	//	it also has a good example of how to read and store a file
+
 	std::vector<std::string> encoded;
 	std::string line;
 	while (getline(filestream, line)) {
+		std::cout << line << std::endl;
 		encoded.push_back(line);
 	}
 	filestream.close();
 
 	//printing percentages map too
-	for (auto it = occurences->begin(); it != occurences->end(); it++) {
-		std::cout << it->first << " : " << it->second << "%\n";
+	for (auto it = occurences->begin()++; it != occurences->end(); it++) {
+		if (it->first == ' ')
+			std::cout << "space" << " : " << it->second * 100.0 << "%\n";
+		else if (it->first == '\n')
+			std::cout << "newline" << " : " << it->second * 100.0 << "%\n";
+		else
+			std::cout << it->first << " : " << it->second * 100.0 << "%\n";
 	}
 	std::cout << std::endl;
 	delete occurences; //put this in the right place if you move occurences

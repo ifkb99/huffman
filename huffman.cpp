@@ -72,9 +72,9 @@ std::vector<std::string> encode(std::ifstream& filestream) {
 	//--------------right now this just returns a vector<string> of read file
 	
 	//reset filestream to beginning
+	filestream.clear(); //reset eof bit
 	filestream.seekg(0, filestream.beg); //not working??
 	//http://www.cplusplus.com/reference/istream/istream/seekg/
-	//TODO: read link. get fstream reset working
 	//	it also has a good example of how to read and store a file
 
 	std::vector<std::string> encoded;

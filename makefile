@@ -1,9 +1,13 @@
-CXX    = g++
-FILE   = $(wildcard *.cpp)
-TARGET = $(patsubst %.cpp,%,$(FILE))
-FLAGS  = -O3 -std=c++17
+CXX       = g++
+CPP_FILES = $(wildcard *.cpp)
+OBJS      = $(patsubst %.cpp,%.o,$(CPP_FILES))
+CXXFLAGS  = -std=c++17 -O3
+TARGET    = huffman
 
-all:
-	$(CXX) $(FLAGS) $(FILE) -o $(TARGET)
+all: $(TARGET)
+$(TARGET): $(OBJS)
+	$(CXX) $(OBJS) -o $(TARGET)
+%.o: %.cpp %.h
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 clean:
-	rm -f $(TARGET)
+	rm -f $(OBJS) $(TARGET)

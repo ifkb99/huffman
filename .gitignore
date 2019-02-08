@@ -3,4 +3,4 @@
 !**/*.cpp
 !**/*.h
 !**/makefile
-!tree/*
+!tree/**

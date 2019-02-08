@@ -40,9 +40,11 @@ V* BTree::find(K* key, Node<K, V>* cur) {
 }
 
 void BTree::delete_tree(Node<K, V>* node) {
-	remove(node->left);
-	remove(node->right);
-	delete node;
+	if (node != nullptr) {
+		remove(node->left);
+		remove(node->right);
+		delete node;
+	}
 }
 
 BTree::~BTree() {

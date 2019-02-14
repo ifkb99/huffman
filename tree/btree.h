@@ -17,8 +17,12 @@ public:
 	const V* find(K*);
 	const V* find(K* key, Node<K, V>* cur);
 	void delete_tree();
+	const size_t size();
+	size_t leaves();
+	const Node<K, V>* root();
 private:
-	Node* _root;
+	Node<K, V>* _root;
+	size_t _size;
 };
 
 #endif

@@ -6,6 +6,8 @@
 #include <utility>
 #include "tree/btree.h"
 
+#define BUFFER_SIZE 4096 //4kb
+
 /*
 	This program takes in a filename, and encodes it Huffman style
 	The filename is then output with filenamename.extension.huff
@@ -30,9 +32,8 @@ const bool char_less(std::pair<char, long> a, std::pair<char, long> b) {
 }
 
 //returns chars and percentage of appearances as double
-std::vector< std::pair<char, long> > get_percentages(char* file, size_t length) {
-	//init occurrences map
-	std::unordered_map<char, long> occurrences;
+void get_percentages(char* file, size_t length,
+						std::unordered_map<char, long>& occurrences) {
 	
 	//read through file and gather data for percentages
 	std::unordered_map<char, long>::iterator it;
@@ -52,14 +53,14 @@ std::vector< std::pair<char, long> > get_percentages(char* file, size_t length) 
 	// for (it = occurrences->begin(); it != occurrences->end(); it++) {
 	// 	it->second /= length;
 	// }
-	std::vector< std::pair<char, long> > occurrence_list;
-	occurrence_list.reserve(occurrences.size());
-	for (const auto& item : occurrences) {
-		occurrence_list.push_back(item);
-	}
-	std::sort(occurrence_list.begin(), occurrence_list.end(), char_less());
+	// std::vector< std::pair<char, long> > occurrence_list;
+	// occurrence_list.reserve(occurrences.size());
+	// for (const auto& item : occurrences) {
+	// 	occurrence_list.push_back(item);
+	// }
+	// std::sort(occurrence_list.begin(), occurrence_list.end(), char_less());
 
-	return occurrence_list;
+	// return occurrence_list;
 }
 
 /*
@@ -73,51 +74,57 @@ std::vector< std::pair<char, long> > get_percentages(char* file, size_t length) 
 
 */
 
+//https://stackoverflow.com/questions/20005784/saving-a-binary-tree-to-a-file
+void preorder_make_string(Node<char, long>& node, std::string& serialized) {
+	preorder_make_string(node.left);
+	if (node == nullptr) {
+		serialized += "# ";
+	} else {
+		serialized += node.key() << ":" << node.value() << " ";
+	}
+	preorder_make_string(node.right);
+}
+
+void serialize_huffman(BTree& tree, std::string& huff_str) {
+	//char:occurences + nulls + spaces = 6 + leaves
+	huff_str.reserve(tree.size() * (6 + (2 * tree.leaves())));
+	preorder_make_string(tree.root(), huff_str);
+}
+
 //remember to write as binary when writing file
-std::vector<std::string> encode(std::ifstream& fs) {
+BTree encode(std::ifstream& fs, BTree& huff_tree) {
 	//get len of file
 	fs.seekg(0, fs.end);
-	size_t length = fs.tellg()-1;
-	fs.seekg(1, fs.beg); //skip first char
+	size_t length = fs.tellg();
+	fs.seekg(0, fs.beg);
 
-	//load file into memory
-	char* file = new char[length];
+	//init percentages map
+	std::unordered_map<char, long> occurrences;
 
-	for (uint i=0; i<length; i++)
-		file[i] = fs.get();
+	//load file into buffer, get char occurences
+	char buffer[BUFFER_SIZE];
+	int chunks = length / BUFFER_SIZE;
+	int rmdr = length % BUFFER_SIZE;
+	for (int i=0; i<chunks; i++) {
+		//put data in buffer
+		fs.get(buffer, BUFFER_SIZE);
+		get_percentages(buffer, BUFFER_SIZE, occurrences);
+	}
 
-	//scan file to get char values
-	//vector of char/amount pairs in order
-	auto occurrences = get_percentages(file, length);
+	//if leftover then read
+	if (rmdr) {
+		fs.get(buffer, rmdr);
+		get_percentages(buffer, rmdr, occurrences);
+	}
 
-	//make huffman tree
-	BTree huff_tree;
-	for (const auto* chr_pair : occurrences)
-		huff_tree.insert(chr_pair);	
-
-	//write huffman tree values to file, and EOT char (double newline?)
-	//first 8 bits are int of how many bits the huff tree is (can it be 4 bits?)
-	
-
-	//write rest of file
-
+	//close stream
 	fs.close();
 
-	//printing percentages map too
-	//first char of file is begin byte, so it's skipped
-	for (auto it = ++occurrences->begin(); it != occurrences->end(); it++) {
-		if (it->first == ' ')
-			std::cout << "space";
-		else if (it->first == '\n')
-			std::cout << "newline";
-		else
-			std::cout << it->first;
-		std::cout << " : " << it->second * 100.0 << "%\n";
-	}
-	std::cout << std::endl;
-	delete occurrences; //put this in the right place if you move occurrences
+	//fill huffman tree
+	for (const auto* chr_pair : occurrences) //make node from occurences
+		huff_tree.insert(chr_pair);
 
-	return encoded;
+	return huff_tree;
 }
 
 //remember to read as binary
@@ -157,22 +164,41 @@ int main(int argc, const char* argv[]) {
 	//determine if file is to be encoded or decoded
 	std::ifstream input(filename);
 	std::ofstream output;
-	std::vector<std::string> file_data;
 	if (extension == ".huff") { //is already encoded
-		file_data = decode(input);
+		std::vector<std::string> file_data = decode(input);
 		output.open(filename.substr(0, filename.size()-5)); //removes .huff
+
+		//write data to file
+		for (const std::string& line : file_data) {
+			output << line << '\n'; //newline is stripped rn //is it really tho
+		}
 	} else { //isn't encoded
-		file_data = encode(input);
-		output.open(filename + ".huff", std::ios::binary); //write as binary
+		BTree huff_tree;
+		encode(input, huff_tree);
+		output.open(filename + ".huff");//, std::ios::binary); //write as binary
+
+		//turn huffman to string
+		std::string huff_str;
+		serialize_huffman(huff_tree, huff_str);
+
+		//prepend amount of chars in tree rep into str
+		huff_str = huff_str.size() + " " + huff_str;
+
+		//write huffstr to file
+
+		//http://www.cplusplus.com/reference/ios/ios_base/flags/
+		//change flags to write in binary
+
+		//write remainder of file in binary using huffman tree.find
+		//I think I need a new func to return the path
+
+		
 	}
 
 	//deletes original file. is it better to overwrite original file?
-	std::remove(argv[1]);
+	//std::remove(argv[1]);
 
-	//write data to file
-	for (const std::string& line : file_data) {
-		output << line << '\n'; //newline is stripped rn
-	}
+	
 	output.close();
 
 	//calculate space saved

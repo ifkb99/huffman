@@ -13,6 +13,7 @@ Node<K, V>* BTree::insert(Node<K, V>* node) {
 }
 
 Node<K, V>* BTree::insert(Node<K, V>* node, Node<K, V>* cur) {
+	_size++;
 	if (cur == nullptr) {
 		return node;
 	}
@@ -45,6 +46,32 @@ void BTree::delete_tree(Node<K, V>* node) {
 		delete_tree(node->right);
 		delete node;
 	}
+}
+
+Node<K, V>* Btree::root() {
+	return _root;
+}
+
+size_t BTree::size() {
+	return _size;
+}
+
+size_t Btree::leaves(Node<K, V>* node) {
+	if (node == nullptr) {
+		return 0;
+	}
+	size_t ctr = 0;
+	if (node->left == nullptr) {
+		ctr++;
+	}
+	if (node->right == nullptr) {
+		ctr++;
+	}
+	return ctr + leaves(node->left) + leaves(node->right);
+}
+
+size_t BTree::leaves() {
+	return leaves(_root);
 }
 
 BTree::~BTree() {

@@ -1,7 +1,7 @@
 CXX       = g++
 CPP_FILES = $(wildcard *.cpp)
 OBJS      = $(patsubst %.cpp,%.o,$(CPP_FILES))
-CXXFLAGS  = -std=c++17 -O3
+CXXFLAGS  = -std=c++17 -O3 -Wall -Wextra -Werror
 TARGET    = huffman
 
 all: $(TARGET)
